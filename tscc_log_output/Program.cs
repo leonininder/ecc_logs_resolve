@@ -22,6 +22,8 @@ namespace tscc_log_output
         bool sw_str = true;
         //在output檔案中顯示 0x0000 格式
         private String hex_string;
+        //decide log2 or 3
+        private String decide_logs;
 
         StreamWriter sw;
 
@@ -52,6 +54,7 @@ namespace tscc_log_output
                 {
                     resolve.sw = new StreamWriter((Environment.CurrentDirectory) + "\\output\\" + filename_list[i] + ".txt");
 
+                    resolve.decide_logs = "  檔案以log2解析";
                     try
                     {
                         while (resolve.logs_array.Length != 0)
@@ -68,7 +71,7 @@ namespace tscc_log_output
 
                     if (resolve.sw_str == true)
                     {
-                        Console.Write(filename_list[i] + "  解析結束  MAC 數量0 \n");
+                        Console.Write(filename_list[i] + resolve.decide_logs + "  解析結束  MAC 數量0 \n");
                         Console.Write("------------------------------------------------------------\n\n");
                     }
                     else 
@@ -94,6 +97,7 @@ namespace tscc_log_output
         {
             //用message type 去判斷目前的array在哪一種訊息, 判斷完寫入output再減去該訊息的長度, 然後再回來判斷一次, 直到arrary為0
             int search = (char)logs_array[1];
+
             switch (search)
             {
                 case 255: //ok. if length over 54?
@@ -124,60 +128,134 @@ namespace tscc_log_output
                     logs_array = logs_array_temp;
                     break;
 
-                case 12:    //mac != 0?
-                    sw.WriteLine("------------------------------加值重送--------------------------------");  // ecc_pdf p.29
-                    sw.WriteLine("length_of_record                     :" + logs_array[0]); 
-                    sw.WriteLine("message_type                         :" + logs_array[1]);
-                    sw.WriteLine("sub_type                             :" + logs_array[2]);
-                    sw.WriteLine("transaction_date_time   交易日期時間 :" + byte_convert_unix_date_time(3, 4, true));
-                    sw.WriteLine("card_physical_id        卡片晶片號碼 :" + byte_to_hex_string_to_hex(7, 4, true));
-                    sw.WriteLine("issuer_code             發卡單位代碼 :" + logs_array[11]);
-                    sw.WriteLine("tran_SEQNUM                 交易序號 :" + logs_array[12]);
-                    sw.WriteLine("transaction_amount          交易金額 :" + byte_to_hex_string_to_hex(13, 2, true));
-                    sw.WriteLine("Electronic_Remaining_value  卡片餘額 :" + byte_to_hex_string_to_hex(15, 2, true));
-                    sw.WriteLine("loyalty_counter             忠誠點數 :" + byte_to_hex_string_to_hex(17, 2, true));
-                    sw.WriteLine("bank_code                   銀行代碼 :" + logs_array[19]);
-                    hex_string = byte_to_hex_string(20, 4, true);
-                    sw.WriteLine("Transaction_equipment   交易設備編號 :" + "0x" + hex_string );
-                    sw.WriteLine("set_number                           :" + logs_array[24]);
-                    sw.WriteLine("des_key                              :" + logs_array[25]);
-                    sw.WriteLine("MAC                                  :" + byte_to_hex_string_to_hex(26, 4, true));    //-------------------
-                    sw.WriteLine("MFRC                                 :" + byte_to_hex_string_to_hex(30, 4, true));
-                    sw.WriteLine("----------------------------------------------------------------------");
+                case 12:    //ok
+                    if (logs_array[0] == 33)    //log2
+                    {
+                        sw.WriteLine("------------------------------加值重送--------------------------------");  // ecc_pdf p.29
+                        sw.WriteLine("length_of_record                     :" + logs_array[0]);
+                        sw.WriteLine("message_type                         :" + logs_array[1]);
+                        sw.WriteLine("sub_type                             :" + logs_array[2]);
+                        sw.WriteLine("transaction_date_time   交易日期時間 :" + byte_convert_unix_date_time(3, 4, true));
+                        sw.WriteLine("card_physical_id        卡片晶片號碼 :" + byte_to_hex_string_to_hex(7, 4, true));
+                        sw.WriteLine("issuer_code             發卡單位代碼 :" + logs_array[11]);
+                        sw.WriteLine("tran_SEQNUM                 交易序號 :" + logs_array[12]);
+                        sw.WriteLine("transaction_amount          交易金額 :" + byte_to_hex_string_to_hex(13, 2, true));
+                        sw.WriteLine("Electronic_Remaining_value  卡片餘額 :" + byte_to_hex_string_to_hex(15, 2, true));
+                        sw.WriteLine("loyalty_counter             忠誠點數 :" + byte_to_hex_string_to_hex(17, 2, true));
+                        sw.WriteLine("bank_code                   銀行代碼 :" + logs_array[19]);
+                        hex_string = byte_to_hex_string(20, 4, true);
+                        sw.WriteLine("Transaction_equipment   交易設備編號 :" + "0x" + hex_string);
+                        sw.WriteLine("set_number                           :" + logs_array[24]);
+                        sw.WriteLine("des_key                              :" + logs_array[25]);
+                        sw.WriteLine("MAC                                  :" + byte_to_hex_string_to_hex(26, 4, true));    //-------------------
+                        sw.WriteLine("MFRC                                 :" + byte_to_hex_string_to_hex(30, 4, true));
+                        sw.WriteLine("----------------------------------------------------------------------");
 
-                    logs_array_temp = new byte[logs_array.Length - 34];    //length 33 + 紀錄length的 1 byte
-                    Array.Copy(logs_array, 34, logs_array_temp, 0, logs_array.Length - 34);
-                    logs_array = logs_array_temp;
+                        logs_array_temp = new byte[logs_array.Length - 34];    //length 33 + 紀錄length的 1 byte
+                        Array.Copy(logs_array, 34, logs_array_temp, 0, logs_array.Length - 34);
+                        logs_array = logs_array_temp;
+                    }
+                    else    //log3
+                    {
+                        decide_logs = "  檔案以log3解析";
+
+                        sw.WriteLine("------------------------------加值重送--------------------------------");  // ecc_pdf p.29
+                        sw.WriteLine("length_of_record                     :" + logs_array[0]);
+                        sw.WriteLine("message_type                         :" + logs_array[1]);
+                        sw.WriteLine("sub_type                             :" + logs_array[2]);
+                        sw.WriteLine("transaction_date_time   交易日期時間 :" + byte_convert_unix_date_time(3, 4, true));
+                        sw.WriteLine("card_physical_id        卡片晶片號碼 :" + byte_to_hex_string_to_hex(7, 7, true));
+                        sw.WriteLine("issuer_code             發卡單位代碼 :" + logs_array[14]);
+                        sw.WriteLine("tran_SEQNUM                 交易序號 :" + logs_array[15]);
+                        sw.WriteLine("transaction_amount          交易金額 :" + byte_to_hex_string_to_hex(16, 3, true));
+                        sw.WriteLine("Electronic_Remaining_value  卡片餘額 :" + byte_to_hex_string_to_hex(19, 3, true));
+                        sw.WriteLine("loyalty_counter             忠誠點數 :" + byte_to_hex_string_to_hex(22, 2, true));
+                        sw.WriteLine("bank_code                   銀行代碼 :" + logs_array[24]);
+                        hex_string = byte_to_hex_string(25, 4, true);
+                        sw.WriteLine("Transaction_equipment   交易設備編號 :" + "0x" + hex_string);
+                        sw.WriteLine("set_number                           :" + logs_array[29]);
+                        sw.WriteLine("des_key                              :" + logs_array[30]);
+                        sw.WriteLine("MAC                                  :" + byte_to_hex_string_to_hex(31, 4, true));    //-------------------
+                        sw.WriteLine("MFRC                                 :" + byte_to_hex_string_to_hex(35, 4, true));
+                        sw.WriteLine("----------------------------------------------------------------------");
+
+                        logs_array_temp = new byte[logs_array.Length - 39];    //length 38 + 紀錄length的 1 byte
+                        Array.Copy(logs_array, 39, logs_array_temp, 0, logs_array.Length - 39);
+                        logs_array = logs_array_temp;
+                    }
+
                     break;
 
                 case 29:    //new
-                    sw.WriteLine("---------------------------卡片禁用記錄-------------------------------");  // ecc_pdf p.30
-                    sw.WriteLine("length_of_record                     :" + logs_array[0]);
-                    sw.WriteLine("message_type                         :" + logs_array[1]);
-                    sw.WriteLine("transaction_date_time   交易日期時間 :" + byte_convert_unix_date_time(2, 4, true));
-                    sw.WriteLine("card_physical_id        卡片晶片號碼 :" + byte_to_hex_string_to_hex(6, 4, true));
-                    sw.WriteLine("Refusal_code            被禁用的代碼 :" + logs_array[10]);
-                    sw.WriteLine("----------------------------------------------------------------------");
+                    if (logs_array[0] == 10)    //log2
+                    {
+                        sw.WriteLine("---------------------------卡片禁用記錄-------------------------------");  // ecc_pdf p.30
+                        sw.WriteLine("length_of_record                     :" + logs_array[0]);
+                        sw.WriteLine("message_type                         :" + logs_array[1]);
+                        sw.WriteLine("transaction_date_time   交易日期時間 :" + byte_convert_unix_date_time(2, 4, true));
+                        sw.WriteLine("card_physical_id        卡片晶片號碼 :" + byte_to_hex_string_to_hex(6, 4, true));
+                        sw.WriteLine("Refusal_code            被禁用的代碼 :" + logs_array[10]);
+                        sw.WriteLine("----------------------------------------------------------------------");
 
-                    logs_array_temp = new byte[logs_array.Length - 11];    //length 10 + 紀錄length的 1 byte
-                    Array.Copy(logs_array, 11, logs_array_temp, 0, logs_array.Length - 11);
-                    logs_array = logs_array_temp;
+                        logs_array_temp = new byte[logs_array.Length - 11];    //length 10 + 紀錄length的 1 byte
+                        Array.Copy(logs_array, 11, logs_array_temp, 0, logs_array.Length - 11);
+                        logs_array = logs_array_temp;
+                    }
+                    else    //log3
+                    {
+                        decide_logs = "  檔案以log3解析";
+
+                        sw.WriteLine("---------------------------卡片禁用記錄-------------------------------");  // ecc_pdf p.30
+                        sw.WriteLine("length_of_record                     :" + logs_array[0]);
+                        sw.WriteLine("message_type                         :" + logs_array[1]);
+                        sw.WriteLine("transaction_date_time   交易日期時間 :" + byte_convert_unix_date_time(2, 4, true));
+                        sw.WriteLine("card_physical_id        卡片晶片號碼 :" + byte_to_hex_string_to_hex(6, 7, true));
+                        sw.WriteLine("Refusal_code            被禁用的代碼 :" + logs_array[13]);
+                        sw.WriteLine("----------------------------------------------------------------------");
+
+                        logs_array_temp = new byte[logs_array.Length - 14];    //length 13 + 紀錄length的 1 byte
+                        Array.Copy(logs_array, 14, logs_array_temp, 0, logs_array.Length - 14);
+                        logs_array = logs_array_temp;
+                    }
+
                     break;
 
                 case 34:    //new
-                    sw.WriteLine("----------------------------攔截黑名單--------------------------------");  // ecc_pdf p.30
-                    sw.WriteLine("length_of_record                     :" + logs_array[0]);
-                    sw.WriteLine("message_type                         :" + logs_array[1]);
-                    sw.WriteLine("Personal_Profile                票種 :" + logs_array[2]);
-                    sw.WriteLine("transaction_date_time   交易日期時間 :" + byte_convert_unix_date_time(3, 4, true));
-                    sw.WriteLine("card_physical_id        卡片晶片號碼 :" + byte_to_hex_string_to_hex(7, 4, true));
-                    sw.WriteLine("issuer_code             發卡單位代碼 :" + logs_array[11]);
-                    sw.WriteLine("Blocking_Reason         鎖卡原因代碼 :" + logs_array[12]);
-                    sw.WriteLine("----------------------------------------------------------------------");
+                    if (logs_array[0] == 12)    //log2
+                    {
+                        sw.WriteLine("----------------------------攔截黑名單--------------------------------");  // ecc_pdf p.30
+                        sw.WriteLine("length_of_record                     :" + logs_array[0]);
+                        sw.WriteLine("message_type                         :" + logs_array[1]);
+                        sw.WriteLine("Personal_Profile                票種 :" + logs_array[2]);
+                        sw.WriteLine("transaction_date_time   交易日期時間 :" + byte_convert_unix_date_time(3, 4, true));
+                        sw.WriteLine("card_physical_id        卡片晶片號碼 :" + byte_to_hex_string_to_hex(7, 4, true));
+                        sw.WriteLine("issuer_code             發卡單位代碼 :" + logs_array[11]);
+                        sw.WriteLine("Blocking_Reason         鎖卡原因代碼 :" + logs_array[12]);
+                        sw.WriteLine("----------------------------------------------------------------------");
 
-                    logs_array_temp = new byte[logs_array.Length - 13];    //length 12 + 紀錄length的 1 byte
-                    Array.Copy(logs_array, 13, logs_array_temp, 0, logs_array.Length - 13);
-                    logs_array = logs_array_temp;
+                        logs_array_temp = new byte[logs_array.Length - 13];    //length 12 + 紀錄length的 1 byte
+                        Array.Copy(logs_array, 13, logs_array_temp, 0, logs_array.Length - 13);
+                        logs_array = logs_array_temp;
+                    }
+                    else    //log3
+                    {
+                        decide_logs = "  檔案以log3解析";
+
+                        sw.WriteLine("----------------------------攔截黑名單--------------------------------");  // ecc_pdf p.30
+                        sw.WriteLine("length_of_record                     :" + logs_array[0]);
+                        sw.WriteLine("message_type                         :" + logs_array[1]);
+                        sw.WriteLine("Personal_Profile                票種 :" + logs_array[2]);
+                        sw.WriteLine("transaction_date_time   交易日期時間 :" + byte_convert_unix_date_time(3, 4, true));
+                        sw.WriteLine("card_physical_id        卡片晶片號碼 :" + byte_to_hex_string_to_hex(7, 7, true));
+                        sw.WriteLine("issuer_code             發卡單位代碼 :" + logs_array[14]);
+                        sw.WriteLine("Blocking_Reason         鎖卡原因代碼 :" + logs_array[15]);
+                        sw.WriteLine("----------------------------------------------------------------------");
+
+                        logs_array_temp = new byte[logs_array.Length - 16];    //length 15 + 紀錄length的 1 byte
+                        Array.Copy(logs_array, 16, logs_array_temp, 0, logs_array.Length - 16);
+                        logs_array = logs_array_temp;
+                    }
+
                     break;
 
                 case 42:    //最後面有錯
@@ -286,19 +364,42 @@ namespace tscc_log_output
                     break;
 
                 case 74:    //new
-                    sw.WriteLine("------------------------------路線修改--------------------------------");  // ecc_pdf p.34
-                    sw.WriteLine("length_of_record                     :" + logs_array[0]);
-                    sw.WriteLine("message_type                         :" + logs_array[1]);
-                    sw.WriteLine("date_time_of_the_event   事件日期時間:" + byte_convert_unix_date_time(2, 4, true) );
-                    sw.WriteLine("Line_number                  路線代碼:" + byte_to_hex_string_to_hex(6, 2, true) );
-                    sw.WriteLine("Bus_line_group           公車轉乘群組:" + logs_array[8]);
-                    sw.WriteLine("Number_of_zones          設定區段數量:" + logs_array[9]);
-                    sw.WriteLine("Buffer_zone_setting  設定是否有緩衝區:" + logs_array[10]);
-                    sw.WriteLine("----------------------------------------------------------------------");
+                    if (logs_array[0] == 10)    //log2
+                    {
+                        sw.WriteLine("------------------------------路線修改--------------------------------");  // ecc_pdf p.34
+                        sw.WriteLine("length_of_record                     :" + logs_array[0]);
+                        sw.WriteLine("message_type                         :" + logs_array[1]);
+                        sw.WriteLine("date_time_of_the_event   事件日期時間:" + byte_convert_unix_date_time(2, 4, true));
+                        sw.WriteLine("Line_number                  路線代碼:" + byte_to_hex_string_to_hex(6, 2, true));
+                        sw.WriteLine("Bus_line_group           公車轉乘群組:" + logs_array[8]);
+                        sw.WriteLine("Number_of_zones          設定區段數量:" + logs_array[9]);
+                        sw.WriteLine("Buffer_zone_setting  設定是否有緩衝區:" + logs_array[10]);
+                        sw.WriteLine("----------------------------------------------------------------------");
 
-                    logs_array_temp = new byte[logs_array.Length - 11];  //length 10 + 紀錄length的 1 byte
-                    Array.Copy(logs_array, 11, logs_array_temp, 0, logs_array.Length - 11);
-                    logs_array = logs_array_temp;
+                        logs_array_temp = new byte[logs_array.Length - 11];  //length 10 + 紀錄length的 1 byte
+                        Array.Copy(logs_array, 11, logs_array_temp, 0, logs_array.Length - 11);
+                        logs_array = logs_array_temp;
+                    }
+                    else    //log3
+                    {
+                        decide_logs = "  檔案以log3解析";
+
+                        sw.WriteLine("------------------------------路線修改--------------------------------");  // ecc_pdf p.34
+                        sw.WriteLine("length_of_record                     :" + logs_array[0]);
+                        sw.WriteLine("message_type                         :" + logs_array[1]);
+                        sw.WriteLine("date_time_of_the_event   事件日期時間:" + byte_convert_unix_date_time(2, 4, true));
+                        sw.WriteLine("Line_number                  路線代碼:" + byte_to_hex_string_to_hex(6, 2, true));
+                        sw.WriteLine("Bus_line_group           公車轉乘群組:" + logs_array[8]);
+                        sw.WriteLine("New_Bus_line_group     新公車轉乘群組:" + byte_to_hex_string_to_hex(9, 2, true));
+                        sw.WriteLine("Number_of_zones          設定區段數量:" + logs_array[11]);
+                        sw.WriteLine("Buffer_zone_setting  設定是否有緩衝區:" + logs_array[12]);
+                        sw.WriteLine("----------------------------------------------------------------------");
+
+                        logs_array_temp = new byte[logs_array.Length - 13];  //length 12 + 紀錄length的 1 byte
+                        Array.Copy(logs_array, 13, logs_array_temp, 0, logs_array.Length - 13);
+                        logs_array = logs_array_temp;
+                    }
+
                     break;
 
                 case 81:    //ok
@@ -330,96 +431,200 @@ namespace tscc_log_output
                     break;
 
                 case 110:   //ok
-                    //進出旗標 (上車21  下車20)
-                    if (logs_array[21] == 21)
+                    if (logs_array[0] == 113)    //log2
                     {
-                        sw.WriteLine("-----------------------V2里程普通卡上車扣款---------------------------");  // ecc_pdf p.35
+                        //進出旗標 (上車21  下車20)
+                        if (logs_array[21] == 21)
+                        {
+                            sw.WriteLine("-----------------------V2里程普通卡上車扣款---------------------------");  // ecc_pdf p.35
+                        }
+                        else
+                        {
+                            sw.WriteLine("-----------------------V2里程普通卡下車扣款---------------------------");  // ecc_pdf p.35
+                        }
+
+                        sw.WriteLine("length_of_record                     :" + logs_array[0]);
+                        sw.WriteLine("message_type                         :" + logs_array[1]);
+                        sw.WriteLine("sub_type                        票種 :" + logs_array[2]);
+                        sw.WriteLine("transaction_date_time   交易日期時間 :" + byte_convert_unix_date_time(3, 4, true));
+                        sw.WriteLine("card_physical_id        卡片晶片號碼 :" + byte_to_hex_string_to_hex(7, 4, true));   //------------------------------
+                        sw.WriteLine("issuer_code             發卡單位代碼 :" + logs_array[11]);
+                        sw.WriteLine("tran_SEQNUM                 交易序號 :" + logs_array[12]);
+                        sw.WriteLine("transaction_amount    交易金額(實扣) :" + byte_to_hex_string_to_hex(13, 2, true));
+                        sw.WriteLine("electronic_remaining_value  卡片餘額 :" + byte_to_hex_string_to_hex(15, 2, true));
+                        sw.WriteLine("line_number                 路線代碼 :" + byte_to_hex_string_to_hex(17, 2, true));
+                        sw.WriteLine("current_zone_number         目前區段 :" + logs_array[19] + "   (下車計費站號)");
+                        hex_string = byte_to_hex_string(20, 1, true);
+                        sw.WriteLine("transfer_group_code     轉乘群組代碼 :0x" + hex_string + " (前次 3  本次 3)");
+                        sw.WriteLine("entry_exit_flag             進出旗標 :" + logs_array[21] + "  (上車21  下車20)");
+                        sw.WriteLine("entry_zone_number           進站號碼 :" + logs_array[22] + "   (上車計費站號)");
+                        sw.WriteLine("owner_area_code           卡片區域碼 :" + logs_array[23]);
+                        sw.WriteLine("transfer_discount           轉乘優惠 :" + byte_to_hex_string_to_hex(24, 2, true));
+                        sw.WriteLine("personal_discount           個人優惠 :" + byte_to_hex_string_to_hex(26, 2, true));
+                        sw.WriteLine("loyalty_counter             忠誠點數 :" + byte_to_hex_string_to_hex(28, 2, true));
+                        sw.WriteLine("up_tran_SEQNUM          上次交易序號 :" + logs_array[30] + "  (上車:放本次上車交易序號  下車:放上車交易序號)");
+                        sw.WriteLine("transaction_advance_amount    預扣款 :" + byte_to_hex_string_to_hex(31, 2, true) + "   (上車時為0  下車時為上車實扣款(要加上點數優惠轉換的金額))");
+                        sw.WriteLine("ORI_AMT                 原價(未打折) :" + byte_to_hex_string_to_hex(33, 2, true));
+                        sw.WriteLine("mileage_tran_flag   里程轉乘優惠記錄 :" + logs_array[35] + "   (0:本次交易未符合轉乘優惠資格   1:本次交易符合轉乘優惠資格)");
+                        sw.WriteLine("Other_DISC              其他輔助金額 :" + byte_to_hex_string_to_hex(36, 2, true));
+                        sw.WriteLine("up_tran_time   公車轉乘-上筆交易時間 :" + byte_convert_unix_date_time(38, 4, true));
+                        hex_string = byte_to_hex_string(42, 4, true);
+                        sw.WriteLine("up_tran_DEVID  公車轉乘-上筆設備編號 :" + byte_to_hex_string_to_hex(42, 4, true) + " (0x" + hex_string + ")   拆解後資訊->業者代碼:33  設備種類:3  設備ID:3862");
+                        sw.WriteLine("up_tran_SPID   公車轉乘-上筆業者代碼 :" + logs_array[46]);
+                        sw.WriteLine("RFU                                  :" + byte_to_hex_string_to_hex(47, 2, true) + "   (定值0x00)");
+                        sw.WriteLine("set_number                           :" + logs_array[49] + "   (定值0x00)");
+                        sw.WriteLine("des_key                              :" + logs_array[50] + "   (定值0x01)");
+                        hex_string = byte_to_hex_string(51, 4, true);
+                        sw.WriteLine("transMAC                             :" + byte_to_hex_string_to_hex(51, 4, true) + "  (0x" + hex_string + ")");    // +  (0xB83A62BD)------------------------
+                        sw.WriteLine("MFRC                                 :" + byte_to_hex_string_to_hex(55, 4, true));
+                        sw.WriteLine("Driver_No                   司機代碼 :" + byte_to_hex_string_to_hex(59, 2, true));
+                        sw.WriteLine("Shift_Time                  開班時間 :" + byte_convert_unix_date_time(61, 4, true));
+                        sw.WriteLine("Shift_No                        班別 :" + byte_to_hex_string_to_hex(65, 2, true));
+                        sw.WriteLine("TXN_Personal_Profile      交易身分別 :" + logs_array[67]);
+                        sw.WriteLine("EV_BEF_TXN            交易前卡片金額 :" + byte_to_hex_string_to_hex(68, 2, true));
+                        sw.WriteLine("Dis_Rate                        費率 :" + logs_array[70]);
+                        sw.WriteLine("Ticket_AMT              票價(打折後) :" + byte_to_hex_string_to_hex(71, 2, true));
+                        sw.WriteLine("Peak_Disc                   尖峰優惠 :" + byte_to_hex_string_to_hex(73, 2, true));
+                        sw.WriteLine("Penalty                         罰款 :" + byte_to_hex_string_to_hex(75, 2, true));
+                        sw.WriteLine("Personal_Use_Points   輔助款使用點數 :" + byte_to_hex_string_to_hex(77, 2, true));
+                        sw.WriteLine("Personal_Counter      輔助款累積點數 :" + logs_array[79]);
+                        sw.WriteLine("up_tran_SEQ_NO 公車轉乘-上筆交易序號 :" + byte_to_hex_string_to_hex(80, 3, true));
+                        sw.WriteLine("Card_Type                       票別 :" + logs_array[83]);
+                        sw.WriteLine("RFU1                        保留欄位 :" + rfu_format(84, 12));
+                        sw.WriteLine("RFU1_VER                    欄位版本 :" + logs_array[96]);
+                        sw.WriteLine("Go_Return_Flag            往返程註記 :" + logs_array[97] + "   (去程1  返程2  循環3)");
+                        sw.WriteLine("Current_Zone_Number2    目前招呼站號 :" + byte_to_hex_string_to_hex(98, 2) + "   (上車時等於進站招呼站號  下車時等於下車招呼站號)");    //-----------------
+                        sw.WriteLine("RFU2_3                          保留 :" + byte_to_hex_string_to_hex(100, 2, true));
+                        sw.WriteLine("Other_Disc2            其他輔助金額2 :" + byte_to_hex_string_to_hex(102, 2, true) + "   (下車60元上限輔助之類的)");
+                        sw.WriteLine("Other_Disc3            其他輔助金額3 :" + byte_to_hex_string_to_hex(104, 2, true));
+                        sw.WriteLine("RFU2_5                      保留欄位 :" + rfu_format(106, 7));
+                        sw.WriteLine("RFU2_VER              欄位版本(業者) :" + logs_array[113] + "   (此為第一版  固定填入1)");
+                        sw.WriteLine("----------------------------------------------------------------------");
+
+                        logs_array_temp = new byte[logs_array.Length - 114];    //length 113 + 紀錄length的 1 byte
+                        Array.Copy(logs_array, 114, logs_array_temp, 0, logs_array.Length - 114);
+                        logs_array = logs_array_temp;
                     }
-                    else 
+                    else    //log3
                     {
-                        sw.WriteLine("-----------------------V2里程普通卡下車扣款---------------------------");  // ecc_pdf p.35
+                        decide_logs = "  檔案以log3解析";
+
+                        //進出旗標 (上車21  下車20)
+                        if (logs_array[28] == 21)
+                        {
+                            sw.WriteLine("-----------------------V2里程普通卡上車扣款---------------------------");  // ecc_pdf p.35
+                        }
+                        else
+                        {
+                            sw.WriteLine("-----------------------V2里程普通卡下車扣款---------------------------");  // ecc_pdf p.35
+                        }
+
+                        sw.WriteLine("length_of_record                     :" + logs_array[0]);
+                        sw.WriteLine("message_type                         :" + logs_array[1]);
+                        sw.WriteLine("sub_type                        票種 :" + logs_array[2]);
+                        sw.WriteLine("transaction_date_time   交易日期時間 :" + byte_convert_unix_date_time(3, 4, true));
+                        sw.WriteLine("card_physical_id        卡片晶片號碼 :" + byte_to_hex_string_to_hex(7, 7, true));   //------------------------------
+                        sw.WriteLine("issuer_code             發卡單位代碼 :" + logs_array[14]);
+                        sw.WriteLine("tran_SEQNUM                 交易序號 :" + logs_array[15]);
+                        sw.WriteLine("transaction_amount    交易金額(實扣) :" + byte_to_hex_string_to_hex(16, 3, true));
+                        sw.WriteLine("electronic_remaining_value  卡片餘額 :" + byte_to_hex_string_to_hex(19, 3, true));
+                        sw.WriteLine("line_number                 路線代碼 :" + byte_to_hex_string_to_hex(22, 2, true));
+                        sw.WriteLine("current_zone_number         目前區段 :" + logs_array[24] + "   (下車計費站號)");
+                        hex_string = byte_to_hex_string(25, 1, true);
+                        sw.WriteLine("transfer_group_code     轉乘群組代碼 :0x" + hex_string + " (前次 3  本次 3)");
+                        hex_string = byte_to_hex_string(26, 2, true);
+                        sw.WriteLine("new_trans_group_code  新轉乘群組代碼 :0x" + hex_string + " (前次 3  本次 3)");
+                        sw.WriteLine("entry_exit_flag             進出旗標 :" + logs_array[28] + "  (上車21  下車20)");
+                        sw.WriteLine("entry_zone_number           進站號碼 :" + logs_array[29] + "   (上車計費站號)");
+                        sw.WriteLine("owner_area_code           卡片區域碼 :" + logs_array[30]);
+                        sw.WriteLine("transfer_discount           轉乘優惠 :" + byte_to_hex_string_to_hex(31, 3, true));
+                        sw.WriteLine("personal_discount           個人優惠 :" + byte_to_hex_string_to_hex(34, 3, true));
+                        sw.WriteLine("loyalty_counter             忠誠點數 :" + byte_to_hex_string_to_hex(37, 2, true));
+                        sw.WriteLine("up_tran_SEQNUM          上次交易序號 :" + logs_array[39] + "  (上車:放本次上車交易序號  下車:放上車交易序號)");
+                        sw.WriteLine("transaction_advance_amount    預扣款 :" + byte_to_hex_string_to_hex(40, 3, true) + "   (上車時為0  下車時為上車實扣款(要加上點數優惠轉換的金額))");
+                        sw.WriteLine("ORI_AMT                 原價(未打折) :" + byte_to_hex_string_to_hex(43, 3, true));
+                        sw.WriteLine("mileage_tran_flag   里程轉乘優惠記錄 :" + logs_array[46] + "   (0:本次交易未符合轉乘優惠資格   1:本次交易符合轉乘優惠資格)");
+                        sw.WriteLine("Other_DISC              其他輔助金額 :" + byte_to_hex_string_to_hex(47, 3, true) );
+                        sw.WriteLine("up_tran_time   公車轉乘-上筆交易時間 :" + byte_convert_unix_date_time(50, 4, true) );
+                        hex_string = byte_to_hex_string(54, 6, true);
+                        sw.WriteLine("up_tran_DEVID  公車轉乘-上筆設備編號 :" + byte_to_hex_string_to_hex(54, 6, true) + " (0x" + hex_string + ")   拆解後資訊->業者代碼:33  設備種類:3  設備ID:3862");
+                        sw.WriteLine("up_tran_SPID   公車轉乘-上筆業者代碼 :" + byte_to_hex_string_to_hex(60, 3, true)) ;
+                        sw.WriteLine("RFU                                  :" + byte_to_hex_string_to_hex(63, 2, true) + "   (定值0x00)");
+                        sw.WriteLine("set_number                           :" + logs_array[65] + "   (定值0x00)");
+                        sw.WriteLine("des_key                              :" + logs_array[66] + "   (定值0x01)");
+                        hex_string = byte_to_hex_string(67, 4, true);
+                        sw.WriteLine("transMAC                             :" + byte_to_hex_string_to_hex(67, 4, true) + "  (0x" + hex_string + ")");    // +  (0xB83A62BD)------------------------
+                        sw.WriteLine("MFRC                                 :" + byte_to_hex_string_to_hex(71, 4, true) );
+                        sw.WriteLine("Driver_No                   司機代碼 :" + byte_to_hex_string_to_hex(75, 2, true) );
+                        sw.WriteLine("Shift_Time                  開班時間 :" + byte_convert_unix_date_time(77, 4, true) );
+                        sw.WriteLine("Shift_No                        班別 :" + byte_to_hex_string_to_hex(81, 2, true) );
+                        sw.WriteLine("TXN_Personal_Profile      交易身分別 :" + logs_array[83]);
+                        sw.WriteLine("EV_BEF_TXN            交易前卡片金額 :" + byte_to_hex_string_to_hex(84, 3, true) );
+                        sw.WriteLine("Dis_Rate                        費率 :" + logs_array[87]);
+                        sw.WriteLine("Ticket_AMT              票價(打折後) :" + byte_to_hex_string_to_hex(88, 3, true) );
+                        sw.WriteLine("Peak_Disc                   尖峰優惠 :" + byte_to_hex_string_to_hex(91, 3, true) );
+                        sw.WriteLine("Penalty                         罰款 :" + byte_to_hex_string_to_hex(94, 3, true) );
+                        sw.WriteLine("Personal_Use_Points   輔助款使用點數 :" + byte_to_hex_string_to_hex(97, 2, true) );
+                        sw.WriteLine("Personal_Counter      輔助款累積點數 :" + byte_to_hex_string_to_hex(99, 2, true) );
+                        sw.WriteLine("up_tran_SEQ_NO 公車轉乘-上筆交易序號 :" + byte_to_hex_string_to_hex(101, 3, true));
+                        sw.WriteLine("RFU1                        保留欄位 :" + rfu_format(104, 13));
+                        sw.WriteLine("RFU1_VER                    欄位版本 :" + logs_array[117]);
+                        sw.WriteLine("Go_Return_Flag            往返程註記 :" + logs_array[118] + "   (去程1  返程2  循環3)");
+                        sw.WriteLine("Current_Zone_Number2    目前招呼站號 :" + byte_to_hex_string_to_hex(119, 2) + "   (上車時等於進站招呼站號  下車時等於下車招呼站號)");    //-----------------
+                        sw.WriteLine("RFU2_3                          保留 :" + byte_to_hex_string_to_hex(121, 2, true));
+                        sw.WriteLine("Other_Disc2            其他輔助金額2 :" + byte_to_hex_string_to_hex(123, 2, true) + "   (下車60元上限輔助之類的)");
+                        sw.WriteLine("RFU2_5                      保留欄位 :" + rfu_format(125, 9));
+                        sw.WriteLine("RFU2_VER              欄位版本(業者) :" + logs_array[134] + "   (此為第一版  固定填入1)");
+                        sw.WriteLine("----------------------------------------------------------------------");
+
+                        logs_array_temp = new byte[logs_array.Length - 135];    //length 134 + 紀錄length的 1 byte
+                        Array.Copy(logs_array, 135, logs_array_temp, 0, logs_array.Length - 135);
+                        logs_array = logs_array_temp;
                     }
 
-                    sw.WriteLine("length_of_record                     :" + logs_array[0]);
-                    sw.WriteLine("message_type                         :" + logs_array[1]);
-                    sw.WriteLine("sub_type                        票種 :" + logs_array[2]);
-                    sw.WriteLine("transaction_date_time   交易日期時間 :" + byte_convert_unix_date_time(3, 4, true));
-                    sw.WriteLine("card_physical_id        卡片晶片號碼 :" + byte_to_hex_string_to_hex(7, 4, true));   //------------------------------
-                    sw.WriteLine("issuer_code             發卡單位代碼 :" + logs_array[11]);
-                    sw.WriteLine("tran_SEQNUM                 交易序號 :" + logs_array[12]);
-                    sw.WriteLine("transaction_amount    交易金額(實扣) :" + byte_to_hex_string_to_hex(13, 2, true));
-                    sw.WriteLine("electronic_remaining_value  卡片餘額 :" + byte_to_hex_string_to_hex(15, 2, true));
-                    sw.WriteLine("line_number                 路線代碼 :" + byte_to_hex_string_to_hex(17, 2, true));
-                    sw.WriteLine("current_zone_number         目前區段 :" + logs_array[19] + "   (下車計費站號)");
-                    hex_string = byte_to_hex_string(20, 1, true);
-                    sw.WriteLine("transfer_group_code     轉乘群組代碼 :0x" + hex_string + " (前次 3  本次 3)");
-                    sw.WriteLine("entry_exit_flag             進出旗標 :" + logs_array[21] + "  (上車21  下車20)");
-                    sw.WriteLine("entry_zone_number           進站號碼 :" + logs_array[22] + "   (上車計費站號)");
-                    sw.WriteLine("owner_area_code           卡片區域碼 :" + logs_array[23]);
-                    sw.WriteLine("transfer_discount           轉乘優惠 :" + byte_to_hex_string_to_hex(24, 2, true));
-                    sw.WriteLine("personal_discount           個人優惠 :" + byte_to_hex_string_to_hex(26, 2, true));
-                    sw.WriteLine("loyalty_counter             忠誠點數 :" + byte_to_hex_string_to_hex(28, 2, true));
-                    sw.WriteLine("up_tran_SEQNUM          上次交易序號 :" + logs_array[30] + "  (上車:放本次上車交易序號  下車:放上車交易序號)");
-                    sw.WriteLine("transaction_advance_amount    預扣款 :" + byte_to_hex_string_to_hex(31, 2, true) + "   (上車時為0  下車時為上車實扣款(要加上點數優惠轉換的金額))");
-                    sw.WriteLine("ORI_AMT                 原價(未打折) :" + byte_to_hex_string_to_hex(33, 2, true));
-                    sw.WriteLine("mileage_tran_flag   里程轉乘優惠記錄 :" + logs_array[35] + "   (0:本次交易未符合轉乘優惠資格   1:本次交易符合轉乘優惠資格)");
-                    sw.WriteLine("Other_DISC              其他輔助金額 :" + byte_to_hex_string_to_hex(36, 2, true));
-                    sw.WriteLine("up_tran_time   公車轉乘-上筆交易時間 :" + byte_convert_unix_date_time(38, 4, true));
-                    hex_string = byte_to_hex_string(42, 4, true);
-                    sw.WriteLine("up_tran_DEVID  公車轉乘-上筆設備編號 :" + byte_to_hex_string_to_hex(42, 4, true) + " (0x" + hex_string + ")   拆解後資訊->業者代碼:33  設備種類:3  設備ID:3862");
-                    sw.WriteLine("up_tran_SPID   公車轉乘-上筆業者代碼 :" + logs_array[46]);
-                    sw.WriteLine("RFU                                  :" + byte_to_hex_string_to_hex(47, 2, true) + "   (定值0x00)");
-                    sw.WriteLine("set_number                           :" + logs_array[49] + "   (定值0x00)");
-                    sw.WriteLine("des_key                              :" + logs_array[50] + "   (定值0x01)");
-                    hex_string = byte_to_hex_string(51, 4, true);
-                    sw.WriteLine("transMAC                             :" + byte_to_hex_string_to_hex(51, 4, true) + "  (0x" + hex_string + ")");    // +  (0xB83A62BD)------------------------
-                    sw.WriteLine("MFRC                                 :" + byte_to_hex_string_to_hex(55, 4, true));
-                    sw.WriteLine("Driver_No                   司機代碼 :" + byte_to_hex_string_to_hex(59, 2, true));
-                    sw.WriteLine("Shift_Time                  開班時間 :" + byte_convert_unix_date_time(61, 4, true));
-                    sw.WriteLine("Shift_No                        班別 :" + byte_to_hex_string_to_hex(65, 2, true));
-                    sw.WriteLine("TXN_Personal_Profile      交易身分別 :" + logs_array[67]);
-                    sw.WriteLine("EV_BEF_TXN            交易前卡片金額 :" + byte_to_hex_string_to_hex(68, 2, true));
-                    sw.WriteLine("Dis_Rate                        費率 :" + logs_array[70]);
-                    sw.WriteLine("Ticket_AMT              票價(打折後) :" + byte_to_hex_string_to_hex(71, 2, true));
-                    sw.WriteLine("Peak_Disc                   尖峰優惠 :" + byte_to_hex_string_to_hex(73, 2, true));
-                    sw.WriteLine("Penalty                         罰款 :" + byte_to_hex_string_to_hex(75, 2, true));
-                    sw.WriteLine("Personal_Use_Points   輔助款使用點數 :" + byte_to_hex_string_to_hex(77, 2, true));
-                    sw.WriteLine("Personal_Counter      輔助款累積點數 :" + logs_array[79]);
-                    sw.WriteLine("up_tran_SEQ_NO 公車轉乘-上筆交易序號 :" + byte_to_hex_string_to_hex(80, 3, true));
-                    sw.WriteLine("Card_Type                       票別 :" + logs_array[83]);
-                    sw.WriteLine("RFU1                        保留欄位 :" + rfu_format(84, 12));
-                    sw.WriteLine("RFU1_VER                    欄位版本 :" + logs_array[96]);
-                    sw.WriteLine("Go_Return_Flag            往返程註記 :" + logs_array[97] + "   (去程1  返程2  循環3)");
-                    sw.WriteLine("Current_Zone_Number2    目前招呼站號 :" + byte_to_hex_string_to_hex(98, 2) + "   (上車時等於進站招呼站號  下車時等於下車招呼站號)");    //-----------------
-                    sw.WriteLine("RFU2_3                          保留 :" + byte_to_hex_string_to_hex(100, 2, true));
-                    sw.WriteLine("Other_Disc2            其他輔助金額2 :" + byte_to_hex_string_to_hex(102, 2, true) + "   (下車60元上限輔助之類的)");
-                    sw.WriteLine("Other_Disc3            其他輔助金額3 :" + byte_to_hex_string_to_hex(104, 2, true));
-                    sw.WriteLine("RFU2_5                      保留欄位 :" + rfu_format(106, 7) );
-                    sw.WriteLine("RFU2_VER              欄位版本(業者) :" + logs_array[113] + "   (此為第一版  固定填入1)");
-                    sw.WriteLine("----------------------------------------------------------------------");
-
-                    logs_array_temp = new byte[logs_array.Length - 114];    //length 113 + 紀錄length的 1 byte
-                    Array.Copy(logs_array, 114, logs_array_temp, 0, logs_array.Length - 114);
-                    logs_array = logs_array_temp;
-
+                    //最後的總交易數量
                     trade_total++;
+
                     break;
 
                 case 120:   //new
-                    sw.WriteLine("----------------------------特種票-鎖卡-------------------------------");  // ecc_pdf p.38
-                    sw.WriteLine("length_of_record                     :" + logs_array[0]);
-                    sw.WriteLine("message_type                         :" + logs_array[1]);
-                    sw.WriteLine("Fare_product_type          特種票種類:" + logs_array[2]);
-                    sw.WriteLine("transaction_date_time    交易日期時間:" + byte_convert_unix_date_time(3, 4, true));
-                    sw.WriteLine("card_physical_id         卡片晶片號碼:" + byte_to_hex_string_to_hex(7, 4, true));
-                    sw.WriteLine("issuer_code              發卡單位代碼:" + logs_array[11]);
-                    sw.WriteLine("Blocking_Reason          鎖卡原因代碼:" + logs_array[12]);
-                    sw.WriteLine("transaction_number           交易序號:" + byte_to_hex_string_to_hex(13, 2, true));
-                    sw.WriteLine("----------------------------------------------------------------------");
+                    if (logs_array[0] == 14)    //log2
+                    {
+                        sw.WriteLine("----------------------------特種票-鎖卡-------------------------------");  // ecc_pdf p.38
+                        sw.WriteLine("length_of_record                     :" + logs_array[0]);
+                        sw.WriteLine("message_type                         :" + logs_array[1]);
+                        sw.WriteLine("Fare_product_type          特種票種類:" + logs_array[2]);
+                        sw.WriteLine("transaction_date_time    交易日期時間:" + byte_convert_unix_date_time(3, 4, true));
+                        sw.WriteLine("card_physical_id         卡片晶片號碼:" + byte_to_hex_string_to_hex(7, 4, true));
+                        sw.WriteLine("issuer_code              發卡單位代碼:" + logs_array[11]);
+                        sw.WriteLine("Blocking_Reason          鎖卡原因代碼:" + logs_array[12]);
+                        sw.WriteLine("transaction_number           交易序號:" + byte_to_hex_string_to_hex(13, 2, true));
+                        sw.WriteLine("----------------------------------------------------------------------");
 
-                    logs_array_temp = new byte[logs_array.Length - 15];  //length 14 + 紀錄length的 1 byte
-                    Array.Copy(logs_array, 15, logs_array_temp, 0, logs_array.Length - 15);
-                    logs_array = logs_array_temp;
+                        logs_array_temp = new byte[logs_array.Length - 15];  //length 14 + 紀錄length的 1 byte
+                        Array.Copy(logs_array, 15, logs_array_temp, 0, logs_array.Length - 15);
+                        logs_array = logs_array_temp;
+                    }
+                    else    //log3
+                    {
+                        decide_logs = "  檔案以log3解析";
+
+                        sw.WriteLine("----------------------------特種票-鎖卡-------------------------------");  // ecc_pdf p.38
+                        sw.WriteLine("length_of_record                     :" + logs_array[0]);
+                        sw.WriteLine("message_type                         :" + logs_array[1]);
+                        sw.WriteLine("Fare_product_type          特種票種類:" + logs_array[2]);
+                        sw.WriteLine("transaction_date_time    交易日期時間:" + byte_convert_unix_date_time(3, 4, true));
+                        sw.WriteLine("card_physical_id         卡片晶片號碼:" + byte_to_hex_string_to_hex(7, 7, true));
+                        sw.WriteLine("issuer_code              發卡單位代碼:" + logs_array[14]);
+                        sw.WriteLine("Blocking_Reason          鎖卡原因代碼:" + logs_array[15]);
+                        sw.WriteLine("transaction_number           交易序號:" + byte_to_hex_string_to_hex(16, 2, true));
+                        sw.WriteLine("----------------------------------------------------------------------");
+
+                        logs_array_temp = new byte[logs_array.Length - 18];  //length 17 + 紀錄length的 1 byte
+                        Array.Copy(logs_array, 18, logs_array_temp, 0, logs_array.Length - 18);
+                        logs_array = logs_array_temp;
+                    }
+
                     break;
 
                 case 121:   //new
@@ -453,7 +658,7 @@ namespace tscc_log_output
                     break;
 
                 case 123:   //ok
-                    sw.WriteLine("---------------------------里程手動換站-------------------------------");  // ecc_pdf p.39
+                    sw.WriteLine("-----------------------------里程手動換站-----------------------------");  // ecc_pdf p.39
                     sw.WriteLine("length_of_record                     :" + logs_array[0]);
                     sw.WriteLine("message_type                         :" + logs_array[1]);
                     sw.WriteLine("date_time_of_start_of_shift          :" + byte_convert_unix_date_time(2, 4, true));
@@ -469,20 +674,43 @@ namespace tscc_log_output
                     break;
 
                 case 124:   //new
-                    sw.WriteLine("------------------------------逃票事件--------------------------------");  // ecc_pdf p.39
-                    sw.WriteLine("length_of_record                     :" + logs_array[0]);
-                    sw.WriteLine("message_type                         :" + logs_array[1]);
-                    sw.WriteLine("transaction_date_time    交易日期時間:" + byte_convert_unix_date_time(2, 4, true));
-                    sw.WriteLine("card_physical_id         卡片晶片號碼:" + byte_to_hex_string_to_hex(6, 4, true));
-                    sw.WriteLine("UP_transaction_date_time 上次交易時間:" + byte_convert_unix_date_time(10, 4, true));
-                    sw.WriteLine("UP_Transaction_deviceID 上次交易devID:" + byte_to_hex_string_to_hex(14, 4, true));
-                    sw.WriteLine("UP_transaction_SP    上次交易業者代碼:" + logs_array[18]);
-                    sw.WriteLine("UP_line_number       上次交易路線代號:" + byte_to_hex_string_to_hex(19, 2, true));
-                    sw.WriteLine("----------------------------------------------------------------------");
+                    if (logs_array[0] == 20)    //log2
+                    {
+                        sw.WriteLine("------------------------------逃票事件--------------------------------");  // ecc_pdf p.39
+                        sw.WriteLine("length_of_record                     :" + logs_array[0]);
+                        sw.WriteLine("message_type                         :" + logs_array[1]);
+                        sw.WriteLine("transaction_date_time    交易日期時間:" + byte_convert_unix_date_time(2, 4, true));
+                        sw.WriteLine("card_physical_id         卡片晶片號碼:" + byte_to_hex_string_to_hex(6, 4, true));
+                        sw.WriteLine("UP_transaction_date_time 上次交易時間:" + byte_convert_unix_date_time(10, 4, true));
+                        sw.WriteLine("UP_Transaction_deviceID 上次交易devID:" + byte_to_hex_string_to_hex(14, 4, true));
+                        sw.WriteLine("UP_transaction_SP    上次交易業者代碼:" + logs_array[18]);
+                        sw.WriteLine("UP_line_number       上次交易路線代號:" + byte_to_hex_string_to_hex(19, 2, true));
+                        sw.WriteLine("----------------------------------------------------------------------");
 
-                    logs_array_temp = new byte[logs_array.Length - 21];  //length 20 + 紀錄length的 1 byte
-                    Array.Copy(logs_array, 21, logs_array_temp, 0, logs_array.Length - 21);
-                    logs_array = logs_array_temp;
+                        logs_array_temp = new byte[logs_array.Length - 21];  //length 20 + 紀錄length的 1 byte
+                        Array.Copy(logs_array, 21, logs_array_temp, 0, logs_array.Length - 21);
+                        logs_array = logs_array_temp;
+                    }
+                    else    //log3
+                    {
+                        decide_logs = "  檔案以log3解析";
+
+                        sw.WriteLine("------------------------------逃票事件--------------------------------");  // ecc_pdf p.39
+                        sw.WriteLine("length_of_record                     :" + logs_array[0]);
+                        sw.WriteLine("message_type                         :" + logs_array[1]);
+                        sw.WriteLine("transaction_date_time    交易日期時間:" + byte_convert_unix_date_time(2, 4, true));
+                        sw.WriteLine("card_physical_id         卡片晶片號碼:" + byte_to_hex_string_to_hex(6, 7, true));
+                        sw.WriteLine("UP_transaction_date_time 上次交易時間:" + byte_convert_unix_date_time(13, 4, true));
+                        sw.WriteLine("UP_Transaction_deviceID 上次交易devID:" + byte_to_hex_string_to_hex(17, 6, true));
+                        sw.WriteLine("UP_transaction_SP    上次交易業者代碼:" + byte_to_hex_string_to_hex(23, 3, true));
+                        sw.WriteLine("UP_line_number       上次交易路線代號:" + byte_to_hex_string_to_hex(26, 2, true));
+                        sw.WriteLine("----------------------------------------------------------------------");
+
+                        logs_array_temp = new byte[logs_array.Length - 28];  //length 27 + 紀錄length的 1 byte
+                        Array.Copy(logs_array, 28, logs_array_temp, 0, logs_array.Length - 28);
+                        logs_array = logs_array_temp;
+                    }
+
                     break;
 
                 case 130:   //ok
